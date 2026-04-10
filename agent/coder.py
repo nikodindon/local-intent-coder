@@ -58,7 +58,19 @@ class Coder:
 
     def write(self, filename: str, filepath: str, session: Session, reason: str = "") -> bool:
         """Write a file using the LLM. filepath is the full path."""
-        context = f"File to write: {filename}\nRole: {session.file_roles.get(filename, '')}\nCurrent snapshot:\n{session.snapshot()}\nWrite complete code now."
+        context_parts = [
+            f"File to write: {filename}",
+            f"Role: {session.file_roles.get(filename, '')}",
+        ]
+        
+        if reason:
+            context_parts.insert(1, f"⚠️  THIS IS A REPAIR — YOU MUST FIX: {reason}")
+            context_parts.append("CRITICAL: Read the current snapshot below and add the missing functionality. Do NOT repeat the same code.")
+        
+        context_parts.append(f"Current snapshot:\n{session.snapshot()}")
+        context_parts.append("Write complete code now.")
+        
+        context = "\n\n".join(context_parts)
 
         for attempt in range(6):
             if attempt > 0:

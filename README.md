@@ -257,7 +257,7 @@ If the Architect can produce a correct spec and the loop converges for these tar
 
 ## Key findings so far
 
-*(Migrated from mnemo and local-agent-tetris)*
+*(Migrated from mnemo and local-agent-tetris, updated 2026-04-10)*
 
 **Finding 1 — Temperature=0 is deterministic on the same machine.**
 Running the full 8-prompt benchmark with `temperature=0` on the laptop produced 8/8 perfect SHA matches across 5 independent runs with varying seeds and model unloading between runs. The seed parameter is irrelevant at temperature=0 (greedy decoding has no randomness to seed).
@@ -273,6 +273,35 @@ Hermes Agent failed silently on Qwen2.5-Coder-7B due to tool-call format mismatc
 
 **Finding 5 — File role assignment is load-bearing for multi-file coherence.**
 When each file is given an explicit responsibility description in the system prompt, the Coder produces less cross-file variable collision and fewer "undefined function" errors caught by the Critic. This reduces the average number of repair cycles.
+
+**Finding 6 — Python `openai` library hangs with llama-server on Windows.**
+The official `openai` Python library freezes when communicating with llama-server on Windows. Replaced with raw HTTP requests via `http.client` — now works reliably. (2026-04-10)
+
+**Finding 7 — The Critic cannot catch runtime logic bugs.**
+The text-based Critic can verify "is localStorage code present?" but cannot detect "saveTasks() is never called" or "delete button created on wrong event handler". It only reads code, doesn't execute it. This discovery led to Phase 1.5: execution-based validation. (2026-04-10)
+
+---
+
+### Phase 1.5 — Execution-based validation
+
+*Can we catch runtime bugs that the text-only Critic misses?*
+
+The Critic can verify that code exists, but cannot test if it actually works. Phase 1.5 adds an execution layer:
+
+1. **Open HTML in headless browser** (Playwright/Puppeteer)
+2. **Simulate user actions** — click buttons, enter text, refresh page
+3. **Verify expected behavior** — elements appear, state persists, game works
+4. **Feed results back to Coder** — concrete error messages like "localStorage test failed: 0 tasks found after refresh"
+
+This phase is essential for getting to a working Tetris, because game logic bugs (collision detection, piece rotation, line clearing) can only be caught by running the code.
+
+**Status:** 🔶 In progress. Design phase.
+
+| Question | Status |
+|---|---|
+| Can we automate browser-based testing of generated artifacts? | TBD |
+| Does execution feedback reduce buggy code in repair cycles? | TBD |
+| Can we get to working Tetris with Critic + Execution loop? | TBD |
 
 ---
 

@@ -12,7 +12,17 @@
       "Bash(taskkill *)",
       "Bash(start *)",
       "Bash(rmdir *)",
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(echo.)",
+      "Bash(echo *)",
+      "Bash(drawboard)",
+      "Bash(} } *)",
+      "Bash(movepieceright)",
+      "Bash(movepiecedown)",
+      "Bash(rotatepiece)",
+      "Bash(})",
+      "Bash(dir *)",
+      "Bash(git add *)"
     ]
   },
   "$version": 3

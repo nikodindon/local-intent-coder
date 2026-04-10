@@ -121,7 +121,8 @@ C:\local-intent\
 
 | Phase | Question | Status |
 |---|---|---|
-| 1 — Agent loop baseline | Can Qwen2.5-Coder-7B generate a working multi-file JS project autonomously? | ✅ Complete (see results/phase1-results.md) |
+| 1 — Agent loop baseline | Can Qwen2.5-Coder-7B generate a working multi-file JS project autonomously? | ✅ Complete |
+| **1.5 — Execution validation** | Can we catch runtime bugs the Critic can't see (logic errors, broken event handlers)? | **🔶 In progress** |
 | 2 — Architect quality | Does role-annotated specs reduce Critic cycles vs flat specs? | Not started |
 | 3 — Seed compression ratio | How much does the seed compress the artifact? | Not started |
 | 4 — Functional hash stability | Is the functional hash stable across runs at temperature=0? | Not started |
@@ -135,3 +136,5 @@ C:\local-intent\
 3. **CPU-only inference is the more stable environment for seeds** — sequential float operations are fully deterministic
 4. **A minimal custom agent outperforms a general tool harness for small models** — ~80-line custom agent with simple `<tool>` format is more reliable than Hermes Agent with tool-call format mismatch
 5. **File role assignment is load-bearing for multi-file coherence** — explicit responsibility descriptions reduce cross-file variable collision
+6. **The Python `openai` library hangs with llama-server on Windows** — replaced with raw HTTP via `http.client` (2026-04-10)
+7. **The Critic cannot catch runtime logic bugs** — it only reads code, can't execute it. Catches "no localStorage" but misses "saveTasks() never called". Requires execution-based validation (Phase 1.5).

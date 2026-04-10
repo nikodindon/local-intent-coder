@@ -1,5 +1,5 @@
 """
-LLM client — thin wrapper around the OpenAI-compatible API.
+LLM client — uses raw HTTP requests to avoid openai library hanging issues.
 
 Works with:
   - llama.cpp (llama-server)
@@ -10,14 +10,14 @@ Works with:
 All calls are streaming; the full reply is returned as a string.
 """
 
+import json
 import sys
-import io
+import http.client
+from urllib.parse import urlparse
 
 # Ensure stdout can handle UTF-8 box-drawing characters even when redirected
 if sys.stdout.encoding and sys.stdout.encoding.lower() in ("cp1252", "cp850", "cp437"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-
-from openai import OpenAI
 
 
 def _safe_char(char: str) -> str:
@@ -61,10 +61,12 @@ def _print_context_bar(messages: list[dict], max_out: int, context_size: int, la
 class LLMClient:
     def __init__(self, config: dict):
         self.config = config
-        self._client = OpenAI(
-            base_url=config["base_url"],
-            api_key=config["api_key"],
-        )
+        # Parse the base_url
+        parsed = urlparse(config["base_url"])
+        self._host = parsed.hostname or "localhost"
+        self._port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        self._path = parsed.path or "/v1"
+        self._is_https = (parsed.scheme == "https")
 
     def call(
         self,
@@ -74,7 +76,7 @@ class LLMClient:
     ) -> str:
         """
         Call the LLM with a list of messages.
-        Streams the response and returns the full reply as a string.
+        Uses streaming via Server-Sent Events and returns the full reply.
         """
         max_tokens = max_tokens or self.config["max_out_tokens"]
         context_size = self.config["context_size"]
@@ -84,19 +86,51 @@ class LLMClient:
         _print_context_bar(messages, max_tokens, context_size, label)
         print()
 
+        # Build request
+        payload = {
+            "model": self.config["model"],
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        
         full_reply = ""
         try:
-            with self._client.chat.completions.create(
-                model=self.config["model"],
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-            ) as stream:
-                for chunk in stream:
-                    delta = chunk.choices[0].delta.content or ""
-                    print(delta, end="", flush=True)
-                    full_reply += delta
+            conn = http.client.HTTPConnection(self._host, self._port, timeout=120)
+            conn.request(
+                "POST",
+                f"{self._path}/chat/completions",
+                body=json.dumps(payload),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.config['api_key']}",
+                }
+            )
+            response = conn.getresponse()
+            
+            if response.status != 200:
+                print(f"\n  ⚠️  HTTP {response.status}: {response.read().decode()[:200]}")
+                return ""
+            
+            # Parse SSE stream
+            for line in response:
+                line = line.decode('utf-8').strip()
+                if not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str == "[DONE]":
+                    break
+                try:
+                    data = json.loads(data_str)
+                    delta = data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                    if delta:
+                        print(delta, end="", flush=True)
+                        full_reply += delta
+                except json.JSONDecodeError:
+                    continue
+            
+            conn.close()
         except Exception as e:
             print(f"\n  ⚠️  LLM error: {e}")
 

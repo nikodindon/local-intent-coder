@@ -23,6 +23,14 @@ class Critic:
         else:
             extra = "\n\nAll files listed in the spec exist on disk."
 
+        # Extract features from spec if available
+        spec_features = ""
+        if session.spec_md:
+            import re
+            feature_section = re.search(r'## Features\n(.*?)(?=##|$)', session.spec_md, re.DOTALL)
+            if feature_section:
+                spec_features = f"\n\nREQUIRED FEATURES FROM SPEC:\n{feature_section.group(1).strip()}"
+
         snapshot = session.snapshot()
 
         # Add critic history to avoid repetition
@@ -38,6 +46,7 @@ class Critic:
             f"Required files according to spec:\n{features}\n"
             f"Files present on disk: {', '.join(session.file_list)}\n"
             f"{extra}\n"
+            f"{spec_features}\n"
             f"{history_context}\n"
             f"Here is the current state of the project:\n{snapshot}\n\n"
             "You are a strict code reviewer.\n"
@@ -59,7 +68,13 @@ class Critic:
 
     @staticmethod
     def is_complete(critic_output: str) -> bool:
-        return "ALL_COMPLETE" in critic_output.upper()
+        """Check if Critic output indicates completion."""
+        # Look for explicit VERDICT: ALL_COMPLETE or standalone ALL_COMPLETE
+        if "VERDICT: ALL_COMPLETE" in critic_output.upper():
+            return True
+        if critic_output.strip().upper() == "ALL_COMPLETE":
+            return True
+        return False
 
     @staticmethod
     def is_repetitive(session: Session, threshold: int = 2) -> bool:
