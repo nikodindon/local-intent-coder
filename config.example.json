@@ -1,0 +1,15 @@
+{
+  "_comment": "Copy this file to config.json and fill in your values. config.json is gitignored.",
+  "base_url": "http://localhost:8080/v1",
+  "api_key": "sk-placeholder",
+  "model": "qwen2.5-coder-7b",
+  "context_size": 32768,
+  "max_out_tokens": 3000,
+  "snapshot_limit": 2000,
+  "temperature": 0.1,
+
+  "_dns_optional_comment": "Only needed if you want to store seeds in DNS (mnemo integration)",
+  "cloudflare_api_token": "",
+  "cloudflare_zone_id": "",
+  "cloudflare_domain": "yourdomain.example.com"
+}
