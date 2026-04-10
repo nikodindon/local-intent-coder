@@ -22,7 +22,11 @@
       "Bash(rotatepiece)",
       "Bash(})",
       "Bash(dir *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push)",
+      "Bash(pip install *)",
+      "Bash(playwright *)"
     ]
   },
   "$version": 3

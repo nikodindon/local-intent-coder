@@ -1,15 +1,17 @@
 """
-Agent loop — orchestrates the Coder → Critic → Planner cycle.
+Agent loop — orchestrates the Coder → Critic → Executor → Planner cycle.
 
 Phase 1 (creation): generate any missing files.
 Phase 2 (repair):   Critic reviews, Planner plans, Coder fixes — until
                     ALL_COMPLETE or max_cycles is reached.
+Phase 3 (execution): Executor runs tests, catches runtime bugs Critic misses.
 """
 
 import os
 
 from core.llm import LLMClient
 from core.session import Session
+from core.executor import Executor
 from agent.architect import Architect
 from agent.coder import Coder
 from agent.critic import Critic
@@ -36,6 +38,7 @@ class AgentLoop:
         self.coder = Coder(client, config)
         self.critic = Critic(client, config)
         self.planner = Planner(client, config)
+        self.executor = Executor(session.output_dir, verbose=True)
 
     def _populate_session_from_spec(self):
         """Parse the spec and update session.file_list and session.file_roles."""
@@ -79,8 +82,35 @@ class AgentLoop:
 
             if Critic.is_complete(critic_out):
                 print("\n  🎉 Critic says: ALL_COMPLETE")
-                self.session.completed = True
-                return True
+                
+                # Phase 3: Execute and test
+                _header("PHASE 3 — EXECUTION TESTS")
+                test_report = self.executor.run_tests(self.session.spec_md)
+                
+                if test_report.passed:
+                    print("\n  ✅ All execution tests passed!")
+                    self.session.completed = True
+                    return True
+                else:
+                    # Tests failed - feed back to Coder
+                    print(f"\n  ❌ {len(test_report.failures)} execution test(s) failed")
+                    failures = test_report.failure_reasons()
+                    
+                    # Create a fix plan from failures
+                    for failure_desc in failures[:3]:  # Max 3 at a time
+                        # Determine which file to fix (usually script.js for web apps)
+                        file_to_fix = next(
+                            (f for f in self.session.file_list if f.endswith('.js')),
+                            self.session.file_list[0] if self.session.file_list else None
+                        )
+                        
+                        if file_to_fix:
+                            filepath = os.path.join(os.path.abspath(self.session.output_dir), file_to_fix)
+                            _section(f"Fixing {file_to_fix} (execution test failed)")
+                            self.coder.write(file_to_fix, filepath, self.session, reason=f"EXECUTION TEST FAILED: {failure_desc}")
+                    
+                    # Continue loop for more cycles
+                    continue
 
             # Check if Critic is stuck in a loop
             if Critic.is_repetitive(self.session):
