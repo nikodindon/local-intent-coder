@@ -19,7 +19,8 @@
 | Files in spec | 6 |
 | Cycles run | 2 (out of 12 max) |
 | Completed (Critic ALL_COMPLETE) | ❌ No |
-| Actually functional (manual review) | ✅ Mostly yes |
+| Code contains required features | ✅ Yes (all present in text) |
+| Actually tested in browser | ❌ No (only code review) |
 | Total artifact size | ~15 KB |
 | LLM calls made | ~10 (Architect + 6 Coder + Critic + Planner) |
 
@@ -69,11 +70,13 @@ This suggests:
 ### Validation
 
 Automated validation script (`validate.py`) confirmed:
-- ✅ All 6 critical features found across JS files (piece, move, rotate, collision, game over, score)
+- ✅ All 6 critical features FOUND in code (grep for keywords)
 - ✅ HTML structure valid with proper script includes
-- ✅ Sound and color systems implemented
+- ✅ Sound and color system code present
 
-**Verdict**: The generated code is **functionally complete** for a basic Tetris clone, despite the Critic not recognizing it.
+**Important caveat**: This validation only checks that code EXISTS (grep for keywords). It does NOT test if the code actually runs in a browser. Code with "collision" in it doesn't mean collision detection works.
+
+**Verdict**: Code is present with all required feature implementations, but NOT browser-tested. Logic bugs likely (Phase 1.5 needed to catch them).
 
 ## Key Learnings
 
@@ -90,15 +93,15 @@ Automated validation script (`validate.py`) confirmed:
 
 Original criteria: *"index.html opens in a browser, pieces fall, lines clear, score updates, game over triggers"*
 
-| Criteria | Status |
-|---|---|
-| index.html opens in browser | ✅ Yes (valid HTML5, includes scripts) |
-| Pieces fall | ✅ Yes (gameLoop with setInterval) |
-| Lines clear | ✅ Yes (clearLines function implemented) |
-| Score updates | ✅ Yes (score variable with +10 per line) |
-| Game over triggers | ✅ Yes (collision check on new piece) |
+| Criteria | Status | How verified |
+|---|---|---|
+| index.html opens in browser | ✅ Code exists | Text review only |
+| Pieces fall | ✅ gameLoop exists | Code present, not executed |
+| Lines clear | ✅ clearLines function exists | Code present, not executed |
+| Score updates | ✅ score variable exists | Code present, not executed |
+| Game over triggers | ✅ collision check exists | Code present, not executed |
 
-**Overall**: ✅ **PASSES** functional criteria (with minor bug fixes needed)
+**Overall**: ⚠️ **Code generated but NOT executed** - all required code is present with correct feature names, but has known logic bugs (const vs let, duplicate gameLoop functions). Browser testing needed to verify actual functionality (Phase 1.5).
 
 ## Recommendations for Phase 2
 

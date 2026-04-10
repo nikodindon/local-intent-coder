@@ -39,7 +39,12 @@
 1. **Architect**: Successfully creates structured specs from natural language
 2. **Coder**: Generates real implementation code (no stubs)
 3. **File generation**: 100% success rate (6/6 files in tetris-test)
-4. **Feature coverage**: All critical Tetris features implemented
+4. **Feature presence**: All critical Tetris features FOUND IN CODE
+
+### Important Caveat
+- **Code exists ≠ Code works**: We verified features are PRESENT in text, but never executed in browser
+- **Phase 1.5 later discovered**: LLM-generated code has logic bugs (wrong event handlers, functions never called)
+- **This document overstates functionality**: The Tetris code was never browser-tested at time of writing
 
 ### What Was Broken
 1. **Critic loop**: Got stuck repeating same issues, never said ALL_COMPLETE
@@ -84,11 +89,12 @@
 ```
 ✅ index.html exists with proper structure
 ✅ Includes 4 JS files: tetris.js, colors.js, sounds.js, script.js
-✅ All critical features found: piece, move, rotate, collision, game over, score
-❌ Session completed: False (Critic bug - code is actually functional)
+✅ All critical features FOUND IN CODE: piece, move, rotate, collision, game over, score
+❌ Session completed: False (Critic never said ALL_COMPLETE)
+❌ NOT browser-tested - code existence ≠ functionality
 ```
 
-**Verdict**: Generated code is FUNCTIONAL for basic Tetris gameplay
+**Verdict**: Generated code CONTAINS all required features (verified by grep), but was NEVER EXECUTED in browser. Known bugs: const vs let errors, duplicate gameLoop functions. Phase 1.5 needed to verify actual functionality.
 
 ## Performance Notes
 
