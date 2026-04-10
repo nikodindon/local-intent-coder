@@ -177,16 +177,19 @@ The Tetris clone is the reference benchmark. Success criteria: `index.html` open
 
 **Summary:**
 - 6/6 files generated (100%)
-- All critical features present: piece, move, rotate, collision, game over, score
+- All critical features present in code: piece, move, rotate, collision, game over, score
 - Critic issue: Got stuck in repetition loop (now fixed with repetition detection)
-- Manual validation: Code is functional with minor bugs
+- **Reality check**: Generated code has logic bugs (const vs let, duplicate gameLoop functions)
+- **Phase 1.5 discovery**: Text-only Critic can't catch runtime bugs → added Executor
 
 | Metric | Result |
 |---|---|
 | Files generated correctly on first pass | 6/6 (100%) |
 | Average cycles to ALL_COMPLETE | N/A (Critic bug - now fixed) |
 | Average tokens consumed per run | ~10 LLM calls |
-| Success rate (1 run analyzed) | Functional ✅ (code works) |
+| Code generated | ✅ Yes |
+| Code actually works in browser | ⚠️ Partially (has logic bugs) |
+| Executor tests | 🔶 Phase 1.5 in progress |
 
 ---
 
@@ -286,21 +289,25 @@ The text-based Critic can verify "is localStorage code present?" but cannot dete
 
 *Can we catch runtime bugs that the text-only Critic misses?*
 
-The Critic can verify that code exists, but cannot test if it actually works. Phase 1.5 adds an execution layer:
+**Status:** 🔶 In progress. Executor implemented and working.
 
-1. **Open HTML in headless browser** (Playwright/Puppeteer)
-2. **Simulate user actions** — click buttons, enter text, refresh page
-3. **Verify expected behavior** — elements appear, state persists, game works
-4. **Feed results back to Coder** — concrete error messages like "localStorage test failed: 0 tasks found after refresh"
+**What we built:**
+- `core/executor.py` — Playwright-based browser test runner
+- Auto-generates tests from spec features
+- Tests actual functionality (not just code presence)
+- Feeds concrete failures back to Coder for fixes
 
-This phase is essential for getting to a working Tetris, because game logic bugs (collision detection, piece rotation, line clearing) can only be caught by running the code.
-
-**Status:** 🔶 In progress. Design phase.
+**Results so far:**
+- Counter app: ✅ Works (1 cycle, validated)
+- To-do app v5: ✅ 3/4 tests pass (add, complete, persist)
+  - localStorage persistence WORKS ✅
+  - Delete works manually but test flaky
+- Pipeline now: Coder → Critic → Executor → Coder (if tests fail)
 
 | Question | Status |
 |---|---|
-| Can we automate browser-based testing of generated artifacts? | TBD |
-| Does execution feedback reduce buggy code in repair cycles? | TBD |
+| Can we automate browser-based testing of generated artifacts? | ✅ Yes |
+| Does execution feedback reduce buggy code in repair cycles? | 🔶 Working on it |
 | Can we get to working Tetris with Critic + Execution loop? | TBD |
 
 ---
