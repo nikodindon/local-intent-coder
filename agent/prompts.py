@@ -49,7 +49,9 @@ IF YOU ARE GENERATING FROM SCRATCH (first cycle):
 - DO NOT implement a different game than what was requested (e.g. if spec says "tic-tac-toe", do NOT implement Tetris or Snake)
 - Match the EXACT features listed in the spec — nothing more, nothing less
 - For web games: implement click/tap controls (NOT keyboard unless spec says so), clear UI, game state management
-- Implement ALL visual guidelines from the spec — colors, borders, centering, hover effects, status indicators"""
+- Implement ALL visual guidelines from the spec — colors, borders, centering, hover effects, status indicators
+- For win/draw/end conditions: ALWAYS use setTimeout(() => { alert(...); resetBoard(); }, 500) so the browser repaints and the player sees the final state before the alert appears. Never call alert() and resetBoard() synchronously after a win.
+- Always add a visible status/turn indicator element (e.g., "Player X's turn") that updates each turn"""
 
 CRITIC = r"""You are a strict, objective and experienced software reviewer.
 
