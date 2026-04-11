@@ -132,8 +132,10 @@ C:\local-intent\
 | Phase | Question | Status |
 |---|---|---|
 | 1 — Agent loop baseline | Can Qwen2.5-Coder-7B generate a working multi-file JS project autonomously? | ✅ Complete |
-| **1.5 — Execution validation** | Can we catch runtime bugs the Critic can't see? | ✅ **Complete** |
-| **1.6 — Visual design audit** | Can an automated designer catch ugly CSS the Critic misses? | ✅ **Complete** |
+| 1.5 — Execution validation | Can we catch runtime bugs the Critic can't see? | ✅ Complete |
+| 1.6 — Visual design audit | Can an automated designer catch ugly CSS the Critic misses? | ✅ Complete |
+| **1.7 — Planner file routing** | **Can the Planner map issues to the correct file?** | **🔶 Fixing** |
+| **1.8 — Compression measurement** | **What's the actual seed/artifact ratio?** | **📋 Next** |
 | 2 — Architect quality | Does role-annotated specs reduce Critic cycles vs flat specs? | Not started |
 | 3 — Seed compression ratio | How much does the seed compress the artifact? | Not started |
 | 4 — Functional hash stability | Is the functional hash stable across runs at temperature=0? | Not started |
@@ -155,3 +157,5 @@ C:\local-intent\
 11. **Designer pre-code + post-render = enforcement** (2026-04-11) — Pre-code sets visual standards, post-render enforces them. Together they drove Tic-Tac-Toe from 3/10 to 10/10 in one fix cycle.
 12. **4-phase pipeline completes in 2 cycles** (2026-04-11) — Tic-Tac-Toe went from bare-bones to polished in ~8 minutes CPU-only.
 13. **Win timing bug in generated games** (2026-04-11) — LLM generates `alert()` → `resetBoard()` synchronously, so the player never sees the winning line. Needs `setTimeout` delay or visual highlight.
+14. **Planner doesn't map issues to the correct file** (2026-04-11) — Designer flags "no borders" (CSS), Planner says "fix index.html" (HTML). Infinite loop. Requires rule-based file routing or structured issue reports from Designer.
+15. **External review: measure compression NOW** (2026-04-11) — Three AI reviews (GPT, Grok, Claude) unanimously agreed: compression ratio is the core research question and has zero measured data. Tic-Tac-Toe v4 has all the data needed.

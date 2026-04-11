@@ -385,6 +385,12 @@ Tic-Tac-Toe v4 went from bare-bones to visually polished in just 2 total cycles 
 **Finding 13 — Win timing bug in generated games.**
 The LLM generates `alert()` followed by synchronous `resetBoard()`. The browser hasn't repainted the winning cell before the alert blocks the thread, and then the board resets. The player never sees the completed winning line. This is a gameplay UX bug that neither Critic nor Executor can catch. (2026-04-11)
 
+**Finding 14 — Planner doesn't map issues to the correct file.**
+During Tic-Tac-Toe v5, the Designer flagged "no borders on cells" (a CSS issue). The Planner told the Coder to fix `index.html` (HTML). The Coder added a title tag but didn't touch CSS. The Designer re-audited → same issues → infinite loop. The LLM-as-Planner has no understanding of which file type owns which problem. Requires rule-based file routing or structured issue reports. (2026-04-11)
+
+**Finding 15 — External review consensus: measure compression NOW.**
+Three independent AI reviews (GPT, Grok, Claude) unanimously agreed: the project is strong research but the core claim (compression ratio) has zero measured data points. Tic-Tac-Toe v4 has all the data needed — this should be the next priority. (2026-04-11)
+
 ---
 
 ## The deeper question
@@ -429,13 +435,14 @@ What's done, what's next, what's planned.
 
 ### Known issues
 
-| Issue | Impact | Priority |
-|---|---|---|
-| Win alert shows before repaint, board resets instantly | Player never sees winning line | 🔴 High |
-| No turn indicator ("Player X's turn") | UX gap | 🟡 Medium |
-| Coder ignores Designer visual guidelines | CSS requires fix cycles | 🟡 Medium |
-| Executor generic fallback always passes | False positives for unknown types | 🟡 Medium |
-| Compression ratio never measured (all TBD) | Core research question unanswered | 🟠 Important |
+| Issue | Impact | Priority | Status |
+|---|---|---|---|
+| Win alert shows before repaint, board resets instantly | Player never sees winning line | 🔴 High | Fix identified (setTimeout) |
+| No turn indicator ("Player X's turn") | UX gap | 🟡 Medium | Designer specified, Coder ignores |
+| Coder ignores Designer visual guidelines | CSS requires fix cycles | 🟡 Medium | Prompt improved, needs validation |
+| Executor generic fallback always passes | False positives for unknown types | 🟡 Medium | |
+| **Planner maps issues to wrong files** | **Infinite loops in Phase 4** | 🔴 **Critical** | **Fix in progress** |
+| Compression ratio never measured (all TBD) | Core research question unanswered | 🟠 **Critical** | **Next after Planner fix** |
 
 ---
 
