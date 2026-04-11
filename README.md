@@ -312,6 +312,8 @@ Where `seed_size_bytes` is the length of the compressed prompt + model identifie
 
 | Artifact | Seed size | Artifact size | Ratio |
 |---|---|---|---|
+| **Tic-Tac-Toe v8** | **~76 bytes** | **3,624 bytes (3.5 KB)** | **1:47 (2.10%)** |
+| Counter app | ~87 bytes | ~1,310 bytes | ~1:15 |
 | Tetris clone | TBD | TBD | TBD |
 
 ---

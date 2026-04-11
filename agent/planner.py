@@ -24,7 +24,9 @@ CSS_KEYWORDS = re.compile(
     r'text[-\s]?align|cursor|opacity|gradient|animation|transform|z[-\s]?index|'
     r'overflow|visibility|decoration|letter[-\s]?spacing|line[-\s]?height|'
     r'white[-\s]?space|text[-\s]?shadow|outline|placeholder|scrollbar|'
-    r'responsive|breakpoint|stylesheet|style)\b',
+    r'responsive|breakpoint|stylesheet|style|css|layout|positioning|centered|'
+    r'top\s*:\s*\d|bottom\s*:\s*\d|left\s*:\s*\d|right\s*:\s*\d|semicircle|'
+    r'border-radius|width|height|size|spacing|visual\s*style|appearance)\b',
     re.IGNORECASE
 )
 

@@ -94,19 +94,29 @@ class Coder:
 
         for attempt in range(6):
             if attempt > 0:
-                print(f"  🔁 Attempt {attempt}/6")
+                print(f"  🔁 Attempt {attempt + 1}/6")
 
             messages = [
                 {"role": "system", "content": CODER},
                 {"role": "user", "content": context}
             ]
 
-            reply = self.client.call(messages, label=f"CODER — {filename}", max_tokens=self.config.get("max_out_tokens", 3000))
+            # Use more tokens for JS files (game logic is larger)
+            if filename.endswith('.js'):
+                file_max_tokens = max(self.config.get("max_out_tokens", 3000), 5000)
+            else:
+                file_max_tokens = self.config.get("max_out_tokens", 3000)
+
+            reply = self.client.call(messages, label=f"CODER — {filename}", max_tokens=file_max_tokens)
             tool = extract_tool_call(reply)
 
             if tool and tool.get("command") == "write_file":
                 # Ignore the filename from LLM and force the correct filepath
                 return write_file(filepath, tool.get("content", ""), session.file_list)
+            elif attempt == 0 and not tool:
+                # Log first failure for debugging
+                print(f"  ⚠️  Could not extract <tool> call from response")
+                print(f"  📄 First 300 chars of raw output: {reply[:300]}...")
 
-        print(f"  ❌ Failed to write {filename}")
+        print(f"  ❌ Failed to write {filename} after 6 attempts")
         return False

@@ -110,6 +110,23 @@ class Executor:
     
     def _detect_artifact_type(self, features: list[str], spec_md: str) -> str:
         """Detect what kind of artifact we're dealing with."""
+        # v2: Use SpecAnalyzer for centralized type detection
+        try:
+            from agent.spec_analyzer import SpecAnalyzer
+            analyzer = SpecAnalyzer(spec_md)
+            type_map = {
+                "side_by_side_game": "board_game",  # Executor treats these similarly
+                "falling_block_game": "falling_block",
+                "board_game": "board_game",
+                "grid_game": "grid_game",
+                "web_app": "todo",
+                "unknown": "generic_web",
+            }
+            return type_map.get(analyzer.artifact_type, "generic_web")
+        except ImportError:
+            # Fallback if SpecAnalyzer not available
+            pass
+
         text = " ".join(features).lower() + " " + spec_md.lower()
 
         # Board games: tic-tac-toe, connect-4, checkers, etc.

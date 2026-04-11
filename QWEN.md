@@ -8,7 +8,7 @@ The core philosophy: *store the intention, not the content.* Rather than saving 
 
 ### Architecture
 
-The system uses a **5-phase multi-agent pipeline**:
+The system uses a **5-phase multi-agent pipeline** with **spec-driven generic agents**:
 
 0. **Designer (pre-code)** — Enriches spec with visual guidelines (colors, borders, typography, layout)
 1. **Architect** — Converts a user's natural-language prompt into a structured `.md` spec
@@ -18,6 +18,8 @@ The system uses a **5-phase multi-agent pipeline**:
 5. **Designer (post-render)** — Audits computed styles, scores visual quality, triggers CSS fix loop if needed
 
 The loop runs: Coder → Critic → Executor → Designer → (if needed) Planner → Coder (repeat) until completion.
+
+**v2 Architecture (2026-04-11)**: All agents are now **fully generic** — no hardcoded selectors, no game-specific assumptions. A new `SpecAnalyzer` module extracts artifact metadata (type, controls, win conditions) from the spec, and all agents derive their behavior from this structured data instead of hardcoded templates.
 
 ### Key Technical Concepts
 
@@ -95,9 +97,10 @@ C:\local-intent\
 │   ├── coder.py             # Generates one file per response
 │   ├── critic.py            # Lists blocking issues only (with repetition detection)
 │   ├── planner.py           # Minimal fix plan (≤3 actions/cycle)
-│   ├── designer.py          # Visual guidelines + post-render style audit [NEW]
+│   ├── designer.py          # Visual guidelines + post-render style audit [v2: fully generic]
+│   ├── spec_analyzer.py     # Artifact type detection from spec [NEW v2]
 │   ├── loop.py              # Orchestrates all 5 phases
-│   └── prompts.py           # All system prompts (highest-leverage tuning file)
+│   └── prompts.py           # All system prompts [v2: no hardcoded game assumptions]
 │
 ├── core/                    # Infrastructure
 │   ├── config.py            # Load config.json with defaults
@@ -134,13 +137,14 @@ C:\local-intent\
 | 1 — Agent loop baseline | Can Qwen2.5-Coder-7B generate a working multi-file JS project autonomously? | ✅ Complete |
 | 1.5 — Execution validation | Can we catch runtime bugs the Critic can't see? | ✅ Complete |
 | 1.6 — Visual design audit | Can an automated designer catch ugly CSS the Critic misses? | ✅ Complete |
-| **1.7 — Planner file routing** | **Can the Planner map issues to the correct file?** | ✅ **Complete** |
-| **1.8 — Compression measurement** | **What's the actual seed/artifact ratio?** | 📋 Next |
+| 1.7 — Planner file routing | Can the Planner map issues to the correct file? | ✅ Complete |
+| 1.8 — Compression measurement | What's the actual seed/artifact ratio? | ✅ Complete (1:47 for Tic-Tac-Toe) |
+| **1.9 — Pipeline v2 (generic agents)** | **Can agents work on ANY artifact without hardcoded assumptions?** | 🔶 **In progress** |
 | 2 — Architect quality | Does role-annotated specs reduce Critic cycles vs flat specs? | Not started |
 | 3 — Seed compression ratio | How much does the seed compress the artifact? | Not started |
 | 4 — Functional hash stability | Is the functional hash stable across runs at temperature=0? | Not started |
 | 5 — Cross-machine seed portability | Can a seed generated on one machine be reconstructed on another? | Not started |
-| 6 — Generalisation | Does the pipeline work for non-Tetris targets? | 🔶 Started (Tic-Tac-Toe) |
+| 6 — Generalisation | Does the pipeline work for non-Tic-Tac-Toe targets? | 🔶 Started (Blobby Volley) |
 
 ## Key Findings
 
@@ -159,3 +163,5 @@ C:\local-intent\
 13. **Win timing bug in generated games** (2026-04-11) — LLM generates `alert()` → `resetBoard()` synchronously, so the player never sees the winning line. Needs `setTimeout` delay or visual highlight.
 14. **Planner doesn't map issues to the correct file** (2026-04-11) — Designer flags "no borders" (CSS), Planner says "fix index.html" (HTML). Infinite loop. Requires rule-based file routing or structured issue reports from Designer.
 15. **External review: measure compression NOW** (2026-04-11) — Three AI reviews (GPT, Grok, Claude) unanimously agreed: compression ratio is the core research question and has zero measured data. Tic-Tac-Toe v4 has all the data needed.
+16. **Agents are hardcoded to Tic-Tac-Toe** (2026-04-11) — Designer post-render searches for `.board`, `.cell`, `#reset` selectors. On Blobby Volley, finds nothing → hallucinates "add board and cells" → infinite repair loop. ALL agents have game-specific assumptions baked in.
+17. **Pipeline v2: spec-driven agents** (2026-04-11) — Complete refactoring: `SpecAnalyzer` extracts artifact type from spec, Designer derives audit targets from visual guidelines, all prompts remove hardcoded function names (`resetBoard()`) and game examples. Agents now adapt to ANY artifact type.

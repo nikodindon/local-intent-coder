@@ -97,7 +97,8 @@ class LLMClient:
         
         full_reply = ""
         try:
-            conn = http.client.HTTPConnection(self._host, self._port, timeout=120)
+            # Use longer timeout for large responses (JS files can take 2-3 min at 5000 tokens)
+            conn = http.client.HTTPConnection(self._host, self._port, timeout=300)
             conn.request(
                 "POST",
                 f"{self._path}/chat/completions",

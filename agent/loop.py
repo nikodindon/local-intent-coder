@@ -10,6 +10,8 @@ Phase 4 (visual):    Designer audits rendered styles, triggers CSS fix loop.
 """
 
 import os
+import time
+from datetime import datetime
 
 from core.llm import LLMClient
 from core.session import Session
@@ -21,16 +23,21 @@ from agent.planner import Planner
 from agent.designer import Designer
 
 
+def _timestamp():
+    """Return current time as HH:MM:SS."""
+    return datetime.now().strftime("%H:%M:%S")
+
+
 def _header(text: str):
     sep = "═" * 66
     print(f"\n{sep}")
-    print(f"  {text}")
+    print(f"  {text}  [{_timestamp()}]")
     print(sep)
 
 
 def _section(text: str):
     sep = "─" * 66
-    print(f"\n{sep}\n  {text}\n{sep}")
+    print(f"\n{sep}\n  {text}  [{_timestamp()}]\n{sep}")
 
 
 class AgentLoop:
@@ -63,12 +70,20 @@ class AgentLoop:
             return
 
         _header("PHASE 1 — FILE CREATION")
+        phase_start = time.time()
         for fname in self.session.file_list:
             if fname not in missing:
                 continue
+            file_start = time.time()
             filepath = os.path.join(os.path.abspath(self.session.output_dir), fname)
             _section(f"Creating {fname}")
             self.coder.write(fname, filepath, self.session)
+            elapsed = time.time() - file_start
+            print(f"\n  ⏱️  {fname} generated in {elapsed:.1f}s")
+            # Save session after each file in case of crash
+            self.session.save()
+        phase_elapsed = time.time() - phase_start
+        print(f"\n  ⏱️  Phase 1 complete in {phase_elapsed:.1f}s")
 
     def _phase_repair(self, max_cycles: int, max_visual_cycles: int = 3) -> bool:
         """
@@ -77,20 +92,28 @@ class AgentLoop:
         Returns True if all phases confirmed completion.
         """
         _header("PHASE 2 — REPAIR LOOP (Critic → Planner → Coder)")
+        phase_start = time.time()
 
         for cycle in range(max_cycles):
+            cycle_start = time.time()
             _section(f"🔁 Cycle {cycle + 1} / {max_cycles}")
             self.session.cycles_run += 1
 
             # Critic
+            critic_start = time.time()
             critic_out = self.critic.review(self.session)
+            critic_time = time.time() - critic_start
+            print(f"\n  ⏱️  Critic review: {critic_time:.1f}s")
 
             if Critic.is_complete(critic_out):
                 print("\n  🎉 Critic says: ALL_COMPLETE")
 
                 # Phase 3: Execute and test
                 _header("PHASE 3 — EXECUTION TESTS")
+                test_start = time.time()
                 test_report = self.executor.run_tests(self.session.spec_md)
+                test_time = time.time() - test_start
+                print(f"\n  ⏱️  Executor tests: {test_time:.1f}s")
 
                 if not test_report.passed:
                     # Tests failed - feed back to Planner
@@ -116,7 +139,10 @@ class AgentLoop:
 
                 # Phase 3 passed — now Phase 4: Visual audit
                 _header("PHASE 4 — VISUAL DESIGN AUDIT")
+                visual_start = time.time()
                 visual_result = self.designer.audit_styles(self.session.spec_md, self.session.output_dir)
+                visual_time = time.time() - visual_start
+                print(f"\n  ⏱️  Designer audit: {visual_time:.1f}s")
 
                 if visual_result["passed"]:
                     print(f"\n  🎨 Designer scores: {visual_result['score']}/10 — VISUALLY_COMPLETE")
@@ -156,19 +182,33 @@ class AgentLoop:
                 return False
 
             # Planner
+            planner_start = time.time()
             plan = self.planner.plan(critic_out, self.session)
+            planner_time = time.time() - planner_start
+            print(f"\n  ⏱️  Planner: {planner_time:.1f}s")
+
             if not plan:
                 print("  No valid plan produced, stopping.")
                 return False
 
             # Coder — execute each action
             for step in plan:
+                file_start = time.time()
                 filename = os.path.basename(step["filename"])
                 filepath = os.path.join(os.path.abspath(self.session.output_dir), filename)
                 reason = step.get("reason", "Fix issues found by the Critic.")
                 _section(f"Fixing {filename}")
                 self.coder.write(filename, filepath, self.session, reason=reason)
+                file_time = time.time() - file_start
+                print(f"\n  ⏱️  {filename} fixed in {file_time:.1f}s")
 
+            cycle_time = time.time() - cycle_start
+            print(f"\n  ⏱️  Cycle {cycle + 1} complete in {cycle_time:.1f}s")
+            # Save session after each cycle
+            self.session.save()
+
+        phase_elapsed = time.time() - phase_start
+        print(f"\n  ⏱️  Phase 2 complete in {phase_elapsed:.1f}s")
         return False
 
     def run(self, max_cycles: int = 12) -> bool:
