@@ -302,7 +302,7 @@ class Executor:
                         cells[4].click()  # O
                         page.wait_for_timeout(150)
                         cells[2].click()  # X — should trigger win
-                        page.wait_for_timeout(1000)
+                        page.wait_for_timeout(300)  # Check BEFORE setTimeout reset (500ms)
 
                         # Remove listener
                         page.remove_listener("dialog", on_dialog)
