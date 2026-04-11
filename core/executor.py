@@ -302,42 +302,93 @@ class Executor:
                         cells[4].click()  # O
                         page.wait_for_timeout(150)
                         cells[2].click()  # X — should trigger win
-                        page.wait_for_timeout(800)
+                        page.wait_for_timeout(1000)
 
                         # Remove listener
                         page.remove_listener("dialog", on_dialog)
 
-                        # Check for alert message
+                        # Check for win: alert OR status text OR body text
+                        win_found = False
+                        reason = ""
+
                         if dialog_message[0] and any(w in dialog_message[0].lower() for w in ['win', 'gagne', 'victoire', 'wins']):
-                            results.append(TestResult(test, True, f"Win alert shown: '{dialog_message[0]}'"))
+                            win_found = True
+                            reason = f"Win alert shown: '{dialog_message[0]}'"
                         else:
-                            # Fallback: check body for win text
-                            body = page.inner_text('body')
-                            if any(w in body.lower() for w in ['win', 'gagne', 'victoire']):
-                                results.append(TestResult(test, True, "Win message found in body"))
+                            # Check status element
+                            status_text = page.evaluate("""() => {
+                                const el = document.querySelector('#status, .status, #result, .result');
+                                return el ? el.textContent : '';
+                            }""")
+                            if any(w in status_text.lower() for w in ['win', 'gagne', 'victoire', 'wins']):
+                                win_found = True
+                                reason = f"Win in status: '{status_text}'"
                             else:
-                                results.append(TestResult(test, False, f"No win alert or message. Alert='{dialog_message[0]}', Body: {body[:150]}"))
+                                # Check body text
+                                body = page.inner_text('body')
+                                if any(w in body.lower() for w in ['win', 'gagne', 'victoire']):
+                                    win_found = True
+                                    reason = "Win message found in body"
+                                else:
+                                    reason = f"No win detected. Alert='{dialog_message[0]}', Status='{status_text}', Body: {body[:120]}"
+
+                        if win_found:
+                            results.append(TestResult(test, True, reason))
+                        else:
+                            results.append(TestResult(test, False, reason))
 
                     elif 'reset' in test_lower:
-                        # Place a mark then reset
+                        # Find reset button first
+                        reset_btn = page.query_selector('#reset, button[type="reset"], .reset-btn')
+                        if not reset_btn:
+                            # Try any button with "reset" or "new" text
+                            for btn in page.query_selector_all('button'):
+                                txt = btn.inner_text().lower()
+                                if 'reset' in txt or 'new' in txt or 'restart' in txt:
+                                    reset_btn = btn
+                                    break
+
+                        if not reset_btn:
+                            results.append(TestResult(test, False, "No reset button found (checked #reset, button, .reset)"))
+                            continue
+
+                        # Place a single mark
                         cells = page.query_selector_all('.cell, [data-index]')
                         if not cells:
-                            results.append(TestResult(test, False, "No cells to test reset"))
+                            results.append(TestResult(test, False, "No game cells"))
                             continue
+
                         cells[0].click()
                         page.wait_for_timeout(200)
-                        # Click reset button
-                        reset_btn = page.query_selector('#reset, button, .reset, [onclick*="reset"]')
-                        if reset_btn:
-                            reset_btn.click()
-                            page.wait_for_timeout(300)
-                            text = cells[0].inner_text().strip()
-                            if not text or text == '':
-                                results.append(TestResult(test, True, "Board cleared after reset"))
-                            else:
-                                results.append(TestResult(test, False, f"Cell still shows '{text}' after reset"))
+                        first_text = cells[0].inner_text().strip()
+                        if not first_text:
+                            # Cell didn't get marked - game might have auto-reset on win
+                            # Try a different cell
+                            for c in cells:
+                                c.click()
+                                page.wait_for_timeout(200)
+                                first_text = c.inner_text().strip()
+                                if first_text:
+                                    break
+
+                        if not first_text:
+                            results.append(TestResult(test, False, "Could not place a mark on any cell"))
+                            continue
+
+                        # Click reset
+                        reset_btn.click()
+                        page.wait_for_timeout(500)
+
+                        # Check all cells are empty
+                        all_empty = all(
+                            c.inner_text().strip() == ''
+                            for c in cells[:9]
+                        )
+                        if all_empty:
+                            results.append(TestResult(test, True, "Board cleared after reset"))
                         else:
-                            results.append(TestResult(test, False, "No reset button found"))
+                            remaining = [c.inner_text().strip() for c in cells[:9] if c.inner_text().strip()]
+                            results.append(TestResult(test, False, f"Cells still have marks after reset: {remaining}"))
 
                     else:
                         results.append(TestResult(test, False, f"No test handler for: {test.name}"))
