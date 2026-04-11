@@ -399,6 +399,46 @@ The LLM is a learned compression dictionary, trained on the entire corpus of hum
 
 ---
 
+## Roadmap
+
+What's done, what's next, what's planned.
+
+### ✅ Complete
+
+- [x] **Phase 1** — Agent loop baseline (Tetris clone, 6/6 files)
+- [x] **Phase 1.5** — Execution-based validation (Executor with Playwright, type detection)
+- [x] **Phase 1.6** — Visual design audit (Designer pre-code + post-render, 3/10 → 10/10)
+- [x] Tic-Tac-Toe as second benchmark (5/5 tests, visually polished, 2 cycles)
+
+### 🔶 In progress — Now
+
+- [ ] **Gameplay polish** — Tic-Tac-Toe: win line highlight, turn indicator, alert timing fix
+- [ ] **Coder → visual sensitivity** — Make the Coder actually use Designer guidelines when generating CSS
+- [ ] **Executor coverage** — Add Snake (grid game), Counter, and meaningful generic web fallback
+
+### 📋 Next up
+
+- [ ] **Phase 2** — Architect quality (flat spec vs role-annotated, measure cycle reduction)
+- [ ] **Phase 3** — Seed compression ratio (first real measurement with Tic-Tac-Toe v4)
+- [ ] **Phase 6** — Generalisation (Snake game as third benchmark)
+
+### 🔭 Planned
+
+- [ ] **Phase 4** — Functional hash stability (same machine, temp=0, multiple runs)
+- [ ] **Phase 5** — Cross-machine seed portability (laptop → desktop reconstruction)
+
+### Known issues
+
+| Issue | Impact | Priority |
+|---|---|---|
+| Win alert shows before repaint, board resets instantly | Player never sees winning line | 🔴 High |
+| No turn indicator ("Player X's turn") | UX gap | 🟡 Medium |
+| Coder ignores Designer visual guidelines | CSS requires fix cycles | 🟡 Medium |
+| Executor generic fallback always passes | False positives for unknown types | 🟡 Medium |
+| Compression ratio never measured (all TBD) | Core research question unanswered | 🟠 Important |
+
+---
+
 ## Intellectual property note
 
 *(See mnemo README for the full discussion)*
