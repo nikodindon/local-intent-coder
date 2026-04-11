@@ -62,13 +62,25 @@ class Coder:
             f"File to write: {filename}",
             f"Role: {session.file_roles.get(filename, '')}",
         ]
-        
-        # Add spec features for context
+
+        # Add spec features and visual guidelines for context
         if session.spec_md:
-            import re
             features = re.search(r'## Features\n(.*?)(?=##|$)', session.spec_md, re.DOTALL)
             if features:
                 context_parts.insert(1, f"SPEC FEATURES:\n{features.group(1).strip()}")
+
+            # Inject Visual Guidelines for CSS/HTML files
+            if filename.endswith(('.css', '.html')):
+                guidelines = re.search(r'## Visual Guidelines\n(.*?)(?=##|$)', session.spec_md, re.DOTALL)
+                if guidelines:
+                    context_parts.insert(2, f"VISUAL GUIDELINES (MUST FOLLOW EXACTLY):\n{guidelines.group(1).strip()}")
+                else:
+                    context_parts.insert(2, "VISUAL GUIDELINES: No pre-code guidelines provided. Make the UI polished and professional.")
+            elif filename.endswith('.js'):
+                # JS files should still be aware of UI requirements (status elements, etc.)
+                guidelines = re.search(r'## Visual Guidelines\n(.*?)(?=##|$)', session.spec_md, re.DOTALL)
+                if guidelines:
+                    context_parts.insert(2, f"VISUAL GUIDELINES (relevant for DOM/UI elements):\n{guidelines.group(1).strip()}")
         
         if reason:
             context_parts.insert(1, f"⚠️  THIS IS A REPAIR — YOU MUST FIX: {reason}")

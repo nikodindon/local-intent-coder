@@ -28,6 +28,14 @@ CRITICAL RULES — YOU MUST OBEY:
 - For game logic files (e.g. tetris.js, script.js, game.js): implement full gameplay — piece definitions, controls, game loop, collision, scoring, game over. No stubs.
 - Keep the response short and focused.
 
+VISUAL GUIDELINES — CRITICAL FOR CSS/HTML FILES:
+- The project spec includes a "## Visual Guidelines" section with SPECIFIC design requirements.
+- When generating CSS or HTML files, you MUST follow these visual guidelines EXACTLY.
+- Use the specified hex color codes, font sizes, border values, spacing, and layout rules as written.
+- Do NOT substitute with generic or default styles. The guidelines are requirements, not suggestions.
+- If the guidelines say "color: #3498db for X", use exactly that. If they say "centered flex layout", implement it.
+- The CSS file is your primary responsibility — it must implement ALL visual guidelines.
+
 IF YOU ARE FIXING AN EXISTING FILE:
 - Read the current snapshot shown above to see what's already there
 - Address the SPECIFIC reason given for why this file needs fixing
@@ -40,7 +48,8 @@ IF YOU ARE GENERATING FROM SCRATCH (first cycle):
 - Read the project spec above to understand EXACTLY what game/app is requested
 - DO NOT implement a different game than what was requested (e.g. if spec says "tic-tac-toe", do NOT implement Tetris or Snake)
 - Match the EXACT features listed in the spec — nothing more, nothing less
-- For web games: implement click/tap controls (NOT keyboard unless spec says so), clear UI, game state management"""
+- For web games: implement click/tap controls (NOT keyboard unless spec says so), clear UI, game state management
+- Implement ALL visual guidelines from the spec — colors, borders, centering, hover effects, status indicators"""
 
 CRITIC = r"""You are a strict, objective and experienced software reviewer.
 
