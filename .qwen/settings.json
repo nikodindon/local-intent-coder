@@ -26,7 +26,10 @@
       "Bash(git commit *)",
       "Bash(git push)",
       "Bash(pip install *)",
-      "Bash(playwright *)"
+      "Bash(playwright *)",
+      "Bash(copy *)",
+      "Bash(type *)",
+      "Bash(cmd *)"
     ]
   },
   "$version": 3

@@ -2,12 +2,30 @@ import argparse
 import os
 import re
 import sys
+import io
 
 from core.config import load_config
 from core.llm import LLMClient
 from core.session import Session
 from agent.architect import Architect
+from agent.designer import Designer
 from agent.loop import AgentLoop
+
+
+class TeeOutput:
+    """Write to both stdout and a log file."""
+    def __init__(self, filepath):
+        self.file = open(filepath, 'w', encoding='utf-8', errors='replace')
+        self.stdout = sys.stdout
+    
+    def write(self, text):
+        self.stdout.write(text)
+        self.file.write(text)
+        self.file.flush()
+    
+    def flush(self):
+        self.stdout.flush()
+        self.file.flush()
 
 
 def main():
@@ -15,9 +33,19 @@ def main():
     parser.add_argument("prompt", type=str)
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--max_cycles", type=int, default=12)
+    parser.add_argument("--log", type=str, default=None,
+                        help="Log file path (tail with: Get-Content -Wait <path>)")
     parser.add_argument("--no-timeout", action="store_true",
                         help="Disable shell timeout (use with --no-timeout for long runs)")
     args = parser.parse_args()
+    
+    # Setup log file if requested
+    if args.log:
+        os.makedirs(os.path.dirname(os.path.abspath(args.log)), exist_ok=True)
+        sys.stdout = TeeOutput(args.log)
+        print(f"📝 Logging to: {args.log}")
+        print(f"💡 Tail in PowerShell: Get-Content -Wait {args.log}")
+        print()
 
     if args.no_timeout and sys.platform == "win32":
         # Re-launch with an infinite shell timeout on Windows
@@ -37,6 +65,11 @@ def main():
 
     architect = Architect(client, config)
     spec_md = architect.build_spec(args.prompt, output_dir)
+
+    # Phase 0: Designer enriches spec with visual guidelines
+    designer_pre = Designer(client, config)
+    spec_md = designer_pre.enrich_spec(spec_md)
+
     session.spec_md = spec_md
 
     with open(os.path.join(output_dir, "spec.md"), "w", encoding="utf-8") as f:

@@ -26,20 +26,30 @@ This is not theoretical compression in the Kolmogorov sense. It's empirical: we 
 ## Architecture
 
 ```
-User prompt  →  Architect  →  spec.md
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │      Agent loop       │
-                    │                       │
-                    │  Coder  → files       │
-                    │    ↓                  │
-                    │  Critic → issues      │
-                    │    ↓                  │
-                    │  Planner → fix plan   │
-                    │    ↓                  │
-                    │  Coder  → (repeat)    │
-                    └───────────────────────┘
+User prompt
+    ↓
+Phase 0: Designer (pre-code)
+    → Adds visual guidelines (colors, borders, layout)
+    ↓
+Architect → spec.md + visual guidelines
+    ↓
+                    ┌───────────────────────────┐
+                    │        Agent loop          │
+                    │                             │
+Phase 1:  Coder  →  files                        │
+                    │       ↓                     │
+Phase 2:  Critic  →  issues                      │
+                    │       ↓                     │
+            Planner  →  fix plan                 │
+                    │       ↓                     │
+Phase 3:  Coder  →  (repeat until ALL_COMPLETE)  │
+                    │       ↓                     │
+Phase 3:  Executor  →  browser tests (Playwright)│
+                    │       ↓                     │
+Phase 4:  Designer  →  visual audit (score /10)  │
+                    │       ↓                     │
+            If failed → Planner → Coder → loop   │
+                    └───────────────────────────┘
                                 │
                           Runnable artifact
                           + SHA256 (functional hash)
@@ -48,13 +58,19 @@ User prompt  →  Architect  →  spec.md
                           (prompt + model + hash ~ 300 bytes)
 ```
 
+**Designer (pre-code)** — Before coding, adds concrete visual guidelines to the spec: color palettes with hex codes, border values, typography, layout rules, interactive states.
+
 **Architect** — receives the user's natural-language prompt, produces a structured `.md` spec: target directory, file list with roles, feature requirements, technical constraints.
 
 **Coder** — generates each file in sequence, respecting its declared role and the current state of the project. Writes complete code, no stubs.
 
 **Critic** — reviews the full project snapshot. Lists only blocking problems (missing functions, broken dependencies, logic errors). Returns `ALL_COMPLETE` when done.
 
-**Planner** — converts the Critic's output into a minimal fix plan (≤3 files per cycle), combining all issues from the same file into a single action.
+**Executor** — opens the artifact in a headless Chromium browser via Playwright. Detects the artifact type (board game, to-do app, counter, etc.) and runs type-specific tests. Catches runtime bugs the Critic can't see.
+
+**Planner** — converts the Critic's or Executor's output into a minimal fix plan (≤3 files per cycle), combining all issues from the same file into a single action.
+
+**Designer (post-render)** — opens the rendered page in Playwright, extracts computed styles via `getComputedStyle()`, audits against the visual guidelines. Scores 1-10. If below threshold, triggers a CSS fix cycle.
 
 **Functional hash** — rather than hashing source code (which drifts across machines due to float16 arithmetic differences in GPU vs CPU inference), we hash the *execution output*. Two machines generating slightly different Python that both print `1\n2\n...100\n` produce identical hashes. This makes seeds cross-machine stable.
 
@@ -80,7 +96,7 @@ Model: **Qwen2.5-Coder-7B-Instruct Q4_K_M** (~4.3 GB) via llama.cpp.
 ```
 intent-engine/
 ├── README.md
-├── main.py               # Entry point: python main.py "create a tetris clone"
+├── main.py               # Entry point: python main.py "create a tic-tac-toe game"
 ├── validate.py           # Validation script: check if generated artifacts meet criteria
 ├── seed.py               # DNS seed storage CLI
 ├── agent/
@@ -88,18 +104,21 @@ intent-engine/
 │   ├── coder.py          # Generates each file per its declared role
 │   ├── critic.py         # Lists blocking issues only (with repetition detection)
 │   ├── planner.py        # Minimal fix plan (≤3 actions per cycle)
-│   ├── loop.py           # Orchestrates create + repair phases
+│   ├── designer.py       # Visual guidelines + post-render style audit [NEW]
+│   ├── loop.py           # Orchestrates all 5 phases
 │   └── prompts.py        # All system prompts (primary tuning surface)
 ├── core/
 │   ├── llm.py            # Local LLM client (OpenAI-compat, llama.cpp / LM Studio / Ollama)
 │   ├── config.py         # Load config.json with defaults
 │   ├── session.py        # Session state + project snapshot + metrics
-│   └── hasher.py         # Functional hashing (hash execution output, not source)
+│   ├── hasher.py         # Functional hashing (hash execution output, not source)
+│   └── executor.py       # Playwright browser test runner [NEW]
 ├── storage/
 │   └── dns_layer.py      # Optional: store seeds in Cloudflare DNS TXT records (from mnemo)
 ├── output/               # Generated artifacts (gitignored)
 ├── results/              # Experiment results, populated as research progresses
 │   ├── phase1-results.md
+│   ├── phase1-5-results.md   # Execution validation + visual audit results
 │   └── dev-summary-2026-04-10.md
 └── config.json           # LLM endpoint, model, context size (gitignored)
 ```
@@ -111,7 +130,8 @@ intent-engine/
 ### Requirements
 
 ```bash
-pip install openai requests
+pip install openai requests playwright
+playwright install chromium
 ```
 
 Run llama-server locally (CPU-only example):
@@ -131,28 +151,30 @@ llama-server `
   "api_key": "sk-placeholder",
   "model": "qwen2.5-coder-7b",
   "context_size": 32768,
-  "max_out_tokens": 3000
+  "max_out_tokens": 3000,
+  "snapshot_limit": 800,
+  "temperature": 0.1
 }
 ```
 
 ### Run
 
 ```bash
-python main.py "create a playable Tetris clone in the browser, with colors and sounds"
+# Full 5-phase pipeline
+python main.py "create a playable Tic-Tac-Toe game"
+
+# With logging (tail with: Get-Content -Wait <path>)
+python main.py "create a Tic-Tac-Toe game" --max_cycles 8 --output output/tictactoe --log output/tictactoe.log
 ```
 
-The Architect builds the spec, the loop runs until the Critic says `ALL_COMPLETE` or max cycles is reached.
-
-```bash
-python main.py "create a playable Tetris clone" --max_cycles 12 --output ./output/tetris
-```
+The Designer adds visual guidelines, the Architect builds the spec, the loop runs until the Critic says `ALL_COMPLETE`, Executor validates functionality, and Designer audits visual quality.
 
 ### Validate
 
 After generation, check if the artifact meets success criteria:
 
 ```bash
-python validate.py output/tetris
+python validate.py output/tictactoe
 ```
 
 This validates:
@@ -189,7 +211,63 @@ The Tetris clone is the reference benchmark. Success criteria: `index.html` open
 | Average tokens consumed per run | ~10 LLM calls |
 | Code generated | ✅ Yes |
 | Code actually works in browser | ⚠️ Partially (has logic bugs) |
-| Executor tests | 🔶 Phase 1.5 in progress |
+
+---
+
+### Phase 1.5 — Execution-based validation
+
+*Can we catch runtime bugs that the text-only Critic misses?*
+
+**Status:** ✅ Complete. See `results/phase1-5-results.md` for full analysis.
+
+**What we built:**
+- `core/executor.py` — Playwright-based browser test runner with artifact type detection
+- Auto-generates type-specific tests (board game, to-do app, counter, generic web)
+- Intercepts `alert()` dialogs to capture win/lose messages
+- Tests actual functionality (not just code presence)
+- Feeds concrete failures back to Coder for fixes
+
+**Results — Tic-Tac-Toe v4 (2026-04-11):**
+
+| Metric | Result |
+|---|---|
+| Files generated | 3/3 (100%) |
+| Critic cycles | 2 total |
+| Executor tests | ✅ **5/5 PASSED** |
+| — Board renders | ✅ |
+| — Cell click places mark | ✅ |
+| — Turn alternation | ✅ |
+| — Win detection (via alert) | ✅ |
+| — Reset works | ✅ |
+
+**Key discoveries:**
+- Executor MUST detect artifact type — hardcoded to-do tests fail on board games
+- `alert()` dialogs must be intercepted — Playwright blocks them by default
+- ALL_COMPLETE ≠ visually acceptable — need post-render visual audit
+
+---
+
+### Phase 1.6 — Visual Design Audit
+
+*Can an automated Designer catch ugly CSS that the Critic and Executor both miss?*
+
+**Status:** ✅ Complete. See `results/phase1-5-results.md` for full analysis.
+
+**What we built:**
+- `agent/designer.py` — Two-phase visual quality agent
+  - **Pre-code**: Enriches spec with concrete visual guidelines (hex colors, borders, typography, layout, hover states)
+  - **Post-render**: Opens page in Playwright, extracts computed styles, audits against guidelines, scores 1-10
+
+**Results — Tic-Tac-Toe v4 (2026-04-11):**
+
+| Round | Score | Verdict |
+|---|---|---|
+| Pre-code guidelines | — | Added: blue `#3498db` / red `#e74c3c` palette, borders, centered layout |
+| Post-render audit (1st) | **3/10** | ❌ NEEDS_VISUAL_FIXES — no cell borders, transparent background, title not centered |
+| CSS fix cycle | — | Planner → Coder added borders, background color |
+| Post-render audit (2nd) | **10/10** | ✅ VISUALLY_COMPLETE |
+
+**Key discovery:** The Coder frequently ignores pre-code visual guidelines. The post-render audit is the enforcement mechanism that actually drives improvements. The combination works: pre-code sets the standard, post-render enforces it.
 
 ---
 
@@ -250,17 +328,23 @@ This is the hardest phase. CPU vs GPU inference produces different floating-poin
 
 *Does the pipeline work for non-Tetris targets?*
 
-We test two additional targets:
-- A terminal-based snake game
-- A single-page weather dashboard (static HTML/CSS, no JS framework)
+Tested targets:
+- ✅ Tic-Tac-Toe game (Phase 1.5/1.6 complete, 2 cycles, visually polished)
+- ✅ Counter app (Phase 1.5, 1 cycle, validated)
+- ✅ To-do app v5 (Phase 1.5, 3/4 tests pass)
 
-If the Architect can produce a correct spec and the loop converges for these targets, the pipeline is general.
+| Artifact | Functional | Visual | Cycles | Notes |
+|---|---|---|---|---|
+| Tetris clone | ⚠️ Logic bugs | ❌ Bare | 2 (incomplete) | Phase 1 baseline |
+| Counter app | ✅ | N/A | 1 | Simple, works |
+| To-do v5 | ✅ | N/A | — | 3/4 tests pass |
+| Tic-Tac-Toe v4 | ✅ | ✅ (10/10) | 2 | Full 5-phase pipeline |
 
 ---
 
 ## Key findings so far
 
-*(Migrated from mnemo and local-agent-tetris, updated 2026-04-10)*
+*(Updated 2026-04-11)*
 
 **Finding 1 — Temperature=0 is deterministic on the same machine.**
 Running the full 8-prompt benchmark with `temperature=0` on the laptop produced 8/8 perfect SHA matches across 5 independent runs with varying seeds and model unloading between runs. The seed parameter is irrelevant at temperature=0 (greedy decoding has no randomness to seed).
@@ -283,32 +367,23 @@ The official `openai` Python library freezes when communicating with llama-serve
 **Finding 7 — The Critic cannot catch runtime logic bugs.**
 The text-based Critic can verify "is localStorage code present?" but cannot detect "saveTasks() is never called" or "delete button created on wrong event handler". It only reads code, doesn't execute it. This discovery led to Phase 1.5: execution-based validation. (2026-04-10)
 
----
+**Finding 8 — Executor MUST detect artifact type.**
+A hardcoded to-do app test suite fails catastrophically on board games (30-second timeout waiting for `<input>` elements that don't exist). The Executor now detects artifact type (board game, to-do, counter, generic web) and generates appropriate tests. (2026-04-11)
 
-### Phase 1.5 — Execution-based validation
+**Finding 9 — `alert()` dialogs must be intercepted.**
+Many LLM-generated games use `alert()` for win/lose messages. Playwright blocks these by default, causing the test to hang. The Executor uses `page.on("dialog", ...)` to accept dialogs and capture their content for verification. (2026-04-11)
 
-*Can we catch runtime bugs that the text-only Critic misses?*
+**Finding 10 — ALL_COMPLETE ≠ visually acceptable.**
+The Critic validates code correctness but cannot see that a page has no borders, no colors, and an uncentered title. The Designer Phase 4 is essential for visual quality. Without it, every generated artifact is functional but bare-bones. (2026-04-11)
 
-**Status:** 🔶 In progress. Executor implemented and working.
+**Finding 11 — Designer pre-code + post-render = enforcement.**
+Pre-code adds detailed visual guidelines (specific hex colors, font sizes, border values) to the spec. The Coder frequently ignores these. The post-render audit enforces them by scoring the actual rendered page and triggering fix cycles. Together they drove Tic-Tac-Toe from 3/10 to 10/10 in one cycle. (2026-04-11)
 
-**What we built:**
-- `core/executor.py` — Playwright-based browser test runner
-- Auto-generates tests from spec features
-- Tests actual functionality (not just code presence)
-- Feeds concrete failures back to Coder for fixes
+**Finding 12 — 4-phase pipeline completes in 2 cycles.**
+Tic-Tac-Toe v4 went from bare-bones to visually polished in just 2 total cycles (~8 minutes CPU-only). This is efficient for a 5-phase pipeline with visual enforcement. (2026-04-11)
 
-**Results so far:**
-- Counter app: ✅ Works (1 cycle, validated)
-- To-do app v5: ✅ 3/4 tests pass (add, complete, persist)
-  - localStorage persistence WORKS ✅
-  - Delete works manually but test flaky
-- Pipeline now: Coder → Critic → Executor → Coder (if tests fail)
-
-| Question | Status |
-|---|---|
-| Can we automate browser-based testing of generated artifacts? | ✅ Yes |
-| Does execution feedback reduce buggy code in repair cycles? | 🔶 Working on it |
-| Can we get to working Tetris with Critic + Execution loop? | TBD |
+**Finding 13 — Win timing bug in generated games.**
+The LLM generates `alert()` followed by synchronous `resetBoard()`. The browser hasn't repainted the winning cell before the alert blocks the thread, and then the board resets. The player never sees the completed winning line. This is a gameplay UX bug that neither Critic nor Executor can catch. (2026-04-11)
 
 ---
 
@@ -346,8 +421,8 @@ A prompt that reliably regenerates a specific program occupies a legally ambiguo
 Especially welcome:
 - Results from different hardware (other CPUs, other GPU tiers)
 - Prompts that compress well (high artifact/seed ratio with reliable reconstruction)
-- New target artifacts beyond Tetris
-- Better Architect prompts that produce tighter specs
+- New target artifacts beyond Tetris and Tic-Tac-Toe
+- Better Architect, Critic, or Designer prompts that produce tighter specs and better code
 
 ---
 

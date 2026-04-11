@@ -63,9 +63,17 @@ class Coder:
             f"Role: {session.file_roles.get(filename, '')}",
         ]
         
+        # Add spec features for context
+        if session.spec_md:
+            import re
+            features = re.search(r'## Features\n(.*?)(?=##|$)', session.spec_md, re.DOTALL)
+            if features:
+                context_parts.insert(1, f"SPEC FEATURES:\n{features.group(1).strip()}")
+        
         if reason:
             context_parts.insert(1, f"⚠️  THIS IS A REPAIR — YOU MUST FIX: {reason}")
             context_parts.append("CRITICAL: Read the current snapshot below and add the missing functionality. Do NOT repeat the same code.")
+            context_parts.append("IMPORTANT: Implement the EXACT features from the spec above. Do NOT implement a different game or app.")
         
         context_parts.append(f"Current snapshot:\n{session.snapshot()}")
         context_parts.append("Write complete code now.")

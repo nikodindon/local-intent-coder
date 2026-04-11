@@ -1,10 +1,12 @@
 """
 Agent loop — orchestrates the Coder → Critic → Executor → Planner cycle.
 
-Phase 1 (creation): generate any missing files.
-Phase 2 (repair):   Critic reviews, Planner plans, Coder fixes — until
-                    ALL_COMPLETE or max_cycles is reached.
+Phase 0 (design):    Designer adds visual guidelines to the spec.
+Phase 1 (creation):  generate any missing files.
+Phase 2 (repair):    Critic reviews, Planner plans, Coder fixes — until
+                     ALL_COMPLETE or max_cycles is reached.
 Phase 3 (execution): Executor runs tests, catches runtime bugs Critic misses.
+Phase 4 (visual):    Designer audits rendered styles, triggers CSS fix loop.
 """
 
 import os
@@ -16,6 +18,7 @@ from agent.architect import Architect
 from agent.coder import Coder
 from agent.critic import Critic
 from agent.planner import Planner
+from agent.designer import Designer
 
 
 def _header(text: str):
@@ -39,6 +42,7 @@ class AgentLoop:
         self.critic = Critic(client, config)
         self.planner = Planner(client, config)
         self.executor = Executor(session.output_dir, verbose=True)
+        self.designer = Designer(client, config)
 
     def _populate_session_from_spec(self):
         """Parse the spec and update session.file_list and session.file_roles."""
@@ -66,10 +70,11 @@ class AgentLoop:
             _section(f"Creating {fname}")
             self.coder.write(fname, filepath, self.session)
 
-    def _phase_repair(self, max_cycles: int) -> bool:
+    def _phase_repair(self, max_cycles: int, max_visual_cycles: int = 3) -> bool:
         """
         Run the Critic → Planner → Coder cycle until complete or exhausted.
-        Returns True if the Critic confirmed completion.
+        Then Phase 3: Executor tests. Then Phase 4: Designer visual audit.
+        Returns True if all phases confirmed completion.
         """
         _header("PHASE 2 — REPAIR LOOP (Critic → Planner → Coder)")
 
@@ -82,35 +87,66 @@ class AgentLoop:
 
             if Critic.is_complete(critic_out):
                 print("\n  🎉 Critic says: ALL_COMPLETE")
-                
+
                 # Phase 3: Execute and test
                 _header("PHASE 3 — EXECUTION TESTS")
                 test_report = self.executor.run_tests(self.session.spec_md)
-                
-                if test_report.passed:
-                    print("\n  ✅ All execution tests passed!")
+
+                if not test_report.passed:
+                    # Tests failed - feed back to Planner
+                    print(f"\n  ❌ {len(test_report.failures)} execution test(s) failed")
+                    failures = test_report.failure_reasons()
+
+                    # Create a fix plan from failures via Planner
+                    critic_failure_report = "Execution test failures:\n" + "\n".join(f"- {f}" for f in failures[:3])
+                    plan = self.planner.plan(critic_failure_report, self.session)
+
+                    if plan:
+                        for step in plan:
+                            filename = os.path.basename(step["filename"])
+                            filepath = os.path.join(os.path.abspath(self.session.output_dir), filename)
+                            reason = step.get("reason", "Fix execution test failures")
+                            _section(f"Fixing {filename}")
+                            self.coder.write(filename, filepath, self.session, reason=reason)
+                    else:
+                        print("  ⚠️  No valid plan produced, stopping.")
+                        return False
+
+                    continue  # back to Critic for another cycle
+
+                # Phase 3 passed — now Phase 4: Visual audit
+                _header("PHASE 4 — VISUAL DESIGN AUDIT")
+                visual_result = self.designer.audit_styles(self.session.spec_md, self.session.output_dir)
+
+                if visual_result["passed"]:
+                    print(f"\n  🎨 Designer scores: {visual_result['score']}/10 — VISUALLY_COMPLETE")
                     self.session.completed = True
                     return True
                 else:
-                    # Tests failed - feed back to Coder
-                    print(f"\n  ❌ {len(test_report.failures)} execution test(s) failed")
-                    failures = test_report.failure_reasons()
-                    
-                    # Create a fix plan from failures
-                    for failure_desc in failures[:3]:  # Max 3 at a time
-                        # Determine which file to fix (usually script.js for web apps)
-                        file_to_fix = next(
-                            (f for f in self.session.file_list if f.endswith('.js')),
-                            self.session.file_list[0] if self.session.file_list else None
-                        )
-                        
-                        if file_to_fix:
-                            filepath = os.path.join(os.path.abspath(self.session.output_dir), file_to_fix)
-                            _section(f"Fixing {file_to_fix} (execution test failed)")
-                            self.coder.write(file_to_fix, filepath, self.session, reason=f"EXECUTION TEST FAILED: {failure_desc}")
-                    
-                    # Continue loop for more cycles
-                    continue
+                    print(f"\n  🎨 Designer scores: {visual_result['score']}/10 — NEEDS VISUAL FIXES")
+                    if visual_result["issues"]:
+                        print("  Issues:")
+                        for issue in visual_result["issues"]:
+                            print(f"    - {issue}")
+
+                    # Feed visual issues to Planner for CSS fix
+                    visual_report = "Visual design issues:\n" + "\n".join(f"- {i}" for i in visual_result["issues"][:3])
+                    plan = self.planner.plan(visual_report, self.session)
+
+                    if plan and max_visual_cycles > 0:
+                        for step in plan:
+                            filename = os.path.basename(step["filename"])
+                            filepath = os.path.join(os.path.abspath(self.session.output_dir), filename)
+                            reason = step.get("reason", "Fix visual design issues")
+                            _section(f"Fixing {filename}")
+                            self.coder.write(filename, filepath, self.session, reason=reason)
+
+                        # Recurse with one fewer visual cycle remaining
+                        return self._phase_repair(max_cycles, max_visual_cycles - 1)
+                    else:
+                        print("  ⚠️  No valid plan or visual cycle limit reached, stopping.")
+                        self.session.completed = True  # functional at least
+                        return True
 
             # Check if Critic is stuck in a loop
             if Critic.is_repetitive(self.session):
