@@ -134,8 +134,8 @@ C:\local-intent\
 | 1 — Agent loop baseline | Can Qwen2.5-Coder-7B generate a working multi-file JS project autonomously? | ✅ Complete |
 | 1.5 — Execution validation | Can we catch runtime bugs the Critic can't see? | ✅ Complete |
 | 1.6 — Visual design audit | Can an automated designer catch ugly CSS the Critic misses? | ✅ Complete |
-| **1.7 — Planner file routing** | **Can the Planner map issues to the correct file?** | **🔶 Fixing** |
-| **1.8 — Compression measurement** | **What's the actual seed/artifact ratio?** | **📋 Next** |
+| **1.7 — Planner file routing** | **Can the Planner map issues to the correct file?** | ✅ **Complete** |
+| **1.8 — Compression measurement** | **What's the actual seed/artifact ratio?** | 📋 Next |
 | 2 — Architect quality | Does role-annotated specs reduce Critic cycles vs flat specs? | Not started |
 | 3 — Seed compression ratio | How much does the seed compress the artifact? | Not started |
 | 4 — Functional hash stability | Is the functional hash stable across runs at temperature=0? | Not started |

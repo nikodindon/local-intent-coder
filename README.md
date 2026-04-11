@@ -265,7 +265,17 @@ The Tetris clone is the reference benchmark. Success criteria: `index.html` open
 | Pre-code guidelines | — | Added: blue `#3498db` / red `#e74c3c` palette, borders, centered layout |
 | Post-render audit (1st) | **3/10** | ❌ NEEDS_VISUAL_FIXES — no cell borders, transparent background, title not centered |
 | CSS fix cycle | — | Planner → Coder added borders, background color |
-| Post-render audit (2nd) | **10/10** | ✅ VISUALLY_COMPLETE |
+| Post-render audit (2nd) | **10/10** | ✅ VISUALLY_COMPLETE
+
+**Results — Tic-Tac-Toe v8 (2026-04-11):**
+
+| Metric | Value |
+|---|---|
+| Files generated | 3/3 (100%) |
+| Executor tests | ✅ 5/5 passed (board, click, alternation, win via status, reset) |
+| Designer audit | ✅ Visual quality passed |
+| Special features | Turn indicator (X=blue, O=orange), setTimeout win delay, highlight on win |
+| Status | ✅ **Fully playable game with polished UI** | |
 
 **Key discovery:** The Coder frequently ignores pre-code visual guidelines. The post-render audit is the enforcement mechanism that actually drives improvements. The combination works: pre-code sets the standard, post-render enforces it.
 
@@ -329,16 +339,15 @@ This is the hardest phase. CPU vs GPU inference produces different floating-poin
 *Does the pipeline work for non-Tetris targets?*
 
 Tested targets:
-- ✅ Tic-Tac-Toe game (Phase 1.5/1.6 complete, 2 cycles, visually polished)
-- ✅ Counter app (Phase 1.5, 1 cycle, validated)
-- ✅ To-do app v5 (Phase 1.5, 3/4 tests pass)
+- ✅ Tic-Tac-Toe game (Phase 1.5/1.6 complete, 2 cycles v4, 6+ cycles v8 with status indicator and timing fixes)
+- ✅ Counter app (Phase 1.5, 4 cycles, completed)
 
 | Artifact | Functional | Visual | Cycles | Notes |
 |---|---|---|---|---|
 | Tetris clone | ⚠️ Logic bugs | ❌ Bare | 2 (incomplete) | Phase 1 baseline |
-| Counter app | ✅ | N/A | 1 | Simple, works |
-| To-do v5 | ✅ | N/A | — | 3/4 tests pass |
-| Tic-Tac-Toe v4 | ✅ | ✅ (10/10) | 2 | Full 5-phase pipeline |
+| Counter app | ✅ | N/A | 4 | Simple, works |
+| Tic-Tac-Toe v4 | ✅ 5/5 | ✅ (10/10) | 2 | Full 5-phase pipeline |
+| **Tic-Tac-Toe v8** | ✅ **5/5** | ✅ **Polished** | 6+ | **Status indicator, win timing fix, highlight on win** |
 
 ---
 
@@ -437,12 +446,16 @@ What's done, what's next, what's planned.
 
 | Issue | Impact | Priority | Status |
 |---|---|---|---|
-| Win alert shows before repaint, board resets instantly | Player never sees winning line | 🔴 High | Fix identified (setTimeout) |
-| No turn indicator ("Player X's turn") | UX gap | 🟡 Medium | Designer specified, Coder ignores |
-| Coder ignores Designer visual guidelines | CSS requires fix cycles | 🟡 Medium | Prompt improved, needs validation |
+| Coder ignores Designer visual guidelines | CSS requires fix cycles | 🟡 Medium | Partial — Coder prompt improved, Post-render audit enforces |
 | Executor generic fallback always passes | False positives for unknown types | 🟡 Medium | |
-| **Planner maps issues to wrong files** | **Infinite loops in Phase 4** | 🔴 **Critical** | **Fix in progress** |
-| Compression ratio never measured (all TBD) | Core research question unanswered | 🟠 **Critical** | **Next after Planner fix** |
+| Compression ratio never measured (all TBD) | Core research question unanswered | 🟠 **Critical** | **Next priority** |
+
+### Completed artifacts
+
+| Run | Artifact | Functional | Visual | Cycles | Notes |
+|---|---|---|---|---|---|
+| v4 | Tic-Tac-Toe | ✅ 5/5 | ✅ 10/10 | 2 | First full pipeline with Designer audit |
+| **v8** | **Tic-Tac-Toe** | ✅ **5/5** | ✅ **Polished** | 6+ | **Status indicator (X=blue, O=orange), win highlight, setTimeout timing fix** |
 
 ---
 
