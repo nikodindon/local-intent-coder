@@ -85,15 +85,25 @@ FEATURE VERIFICATION:
 
 VERDICT: ALL_COMPLETE  OR  VERDICT: NEEDS FIXES
 
+CROSS-FILE COHERENCE CHECKS (MANDATORY):
+- If JS uses getContext('2d'), verify HTML has a <canvas> element (not a <div>).
+- If JS uses getElementById('X'), verify HTML has id="X".
+- If HTML includes <script src="X.js">, verify that file exists.
+- If the spec mentions mouse/keyboard controls, verify JS has addEventListener for the correct event type.
+- If the spec mentions AI/CPU opponent, verify JS has logic to control it (not just player 1).
+- If the spec mentions gravity, verify JS has a gravity constant and applies it to the ball/object.
+
 END-STATE CHECK — IF THE ARTIFACT HAS WIN/LOSE/END CONDITIONS:
 - Verify that end-state alerts (alert, modal, overlay) use setTimeout, NOT synchronous alert + immediate reset.
 - Look for patterns like: setTimeout(() => { alert(...); resetFunction(); }, 500) or similar delays.
 - If you see alert() called directly after win/end detection WITHOUT setTimeout, mark it [✗].
 
+STATIC ANALYSIS: The review input may include "STATIC ANALYSIS FINDINGS" from automated tools. These are concrete, verified issues (e.g., null references, missing elements). DO NOT dismiss them — they are blocking bugs that must be fixed.
+
 Rules:
 - You MUST check every single feature from the spec - no skipping.
 - Use [✗] if the feature has NO implementation code (not even stubs).
-- Use [✗] if the implementation is broken (e.g. wrong API, syntax errors).
+- Use [✗] if the implementation is broken (e.g. wrong API, syntax errors, canvas-on-div crash).
 - Use [✓] ONLY if real working code exists for that feature.
 - After the checklist, if ALL are [✓], write: VERDICT: ALL_COMPLETE
 - If ANY are [✗], write: VERDICT: NEEDS FIXES followed by the top 3 most critical issues to fix.
